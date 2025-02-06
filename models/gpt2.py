@@ -25,9 +25,8 @@ class GPT2Model(GPTPreTrainedModel):
     # Embedding layers.
     self.word_embedding = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
     self.pos_embedding = nn.Embedding(config.max_position_embeddings, config.hidden_size)
-    self.embed_layer_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
     self.embed_dropout = nn.Dropout(config.hidden_dropout_prob)
-    
+
     # Register position_ids (1, len position emb) to buffer because it is a constant.
     position_ids = torch.arange(config.max_position_embeddings).unsqueeze(0)
     self.register_buffer('position_ids', position_ids)
@@ -57,6 +56,8 @@ class GPT2Model(GPTPreTrainedModel):
     pos_ids = self.position_ids[:, :seq_length]
     pos_embeds = None
 
+    ### TODO: Use pos_ids to get position embedding from self.pos_embedding into pos_embeds.
+    ###       Then, add two embeddings together; then apply dropout and return.
     ### YOUR CODE HERE
     raise NotImplementedError
 
@@ -92,28 +93,30 @@ class GPT2Model(GPTPreTrainedModel):
     sequence_output = self.final_layer_norm(sequence_output)
 
     # Get the hidden state of the final token.
-    last_token = sequence_output[:, -1]
+    last_non_pad_idx = attention_mask.sum(dim=1) - 1  # Subtract 1 to get last index
+    last_token = sequence_output[torch.arange(sequence_output.shape[0]), last_non_pad_idx]
+
     return {'last_hidden_state': sequence_output, 'last_token': last_token}
 
 
   @classmethod
-  def from_pretrained(cls):
-    gpt_model = OpenAIGPT2Model.from_pretrained('gpt2').eval()
+  def from_pretrained(cls, model='gpt2', d=768, l=12):
+    gpt_model = OpenAIGPT2Model.from_pretrained(model).eval()
     our_model = GPT2Model(GPT2Config()).eval()
 
     # Load word and positional embeddings.
     our_model.word_embedding.load_state_dict(gpt_model.wte.state_dict())
     our_model.pos_embedding.load_state_dict(gpt_model.wpe.state_dict())
 
-    for i in range(12):
+    for i in range(l):
       l = our_model.gpt_layers[i]
       # Remap the Q,K,V weights from a conv1d to 3 linear projections
-      l.self_attention.query.weight.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.weight'][:, :768].T
-      l.self_attention.query.bias.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.bias'][:768]
-      l.self_attention.key.weight.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.weight'][:, 768:1536].T
-      l.self_attention.key.bias.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.bias'][768:1536]
-      l.self_attention.value.weight.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.weight'][:, 1536:].T
-      l.self_attention.value.bias.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.bias'][1536:]
+      l.self_attention.query.weight.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.weight'][:, :d].T
+      l.self_attention.query.bias.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.bias'][:d]
+      l.self_attention.key.weight.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.weight'][:, d:d*2].T
+      l.self_attention.key.bias.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.bias'][d:d*2]
+      l.self_attention.value.weight.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.weight'][:, d*2:].T
+      l.self_attention.value.bias.data = gpt_model.state_dict()[f'h.{i}.attn.c_attn.bias'][d*2:]
 
       # Remap final dense layer in MHA.
       l.attention_dense.weight.data = gpt_model.state_dict()[f'h.{i}.attn.c_proj.weight'].T
