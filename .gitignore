@@ -4,5 +4,4 @@
 *.pt
 *.pkl
 .idea/
-*.csv
 out/
