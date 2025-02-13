@@ -22,9 +22,21 @@ To test Part 1, you will run:
 * `sanity_check.py`: To test your implementation of GPT models.
 * `classifier.py` : To perform sentiment classification using your models.
 
-And Part 2 targets:
+In Part 2 of this project, you will use GPT2 (via cloze-style classification) detect if one sentence is a paraphrase of 
+another as well as generate sonnets via autoregressive language modeling.  
 
-* This is still a work in progress.
+To test Part 2, you will run:
+
+* `paraphrase_detection.py`: To perform paraphrase detection. 
+* `sonnet_generation.py`: To perform sonnet generation.
+
+Important: Adjust training hyperparameters, particularly batch size, according to your GPU's specifications to optimize performance and prevent out-of-memory errors.
+
+## Pre-testing instructions
+
+While there are missing code blocks that you need to implement in both of these files, the main focus of this second 
+part are the extensions: how you modify your GPT2 model to improve its ability to determine if one sentence is a 
+paraphrase of another as well as its ability to generate sonnets. 
 
 ## Setup instructions
 

@@ -37,6 +37,17 @@ WEIGHTS_NAME = "pytorch_model.bin"
 CONFIG_NAME = "config.json"
 
 
+
+def model_size_to_params(model_size):
+  if model_size == 'gpt2':
+    return {'d':768, 'l':12, 'num_heads':12}
+  elif model_size == 'gpt2-medium':
+    return {'d': 1024, 'l': 24, 'num_heads': 16}
+  elif model_size == 'gpt2-large':
+    return {'d': 1280, 'l': 36, 'num_heads': 20}
+  else:
+    raise Exception(f'{model_size} is not supported.')
+
 def is_torch_available():
   return True
 

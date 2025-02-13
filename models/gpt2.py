@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from transformers import GPT2Tokenizer, GPT2Model as OpenAIGPT2Model
+from transformers import GPT2Model as OpenAIGPT2Model
 
 from config import GPT2Config
 from models.base_gpt import GPTPreTrainedModel
@@ -98,11 +98,22 @@ class GPT2Model(GPTPreTrainedModel):
 
     return {'last_hidden_state': sequence_output, 'last_token': last_token}
 
+  def hidden_state_to_token(self, hidden_state):
+    """
+    GPT-2 uses weight tying with the input word embeddings. The logits are the dot product between output hidden states
+    and the word embedding weights:
+
+      return hidden_state(s) * E^T
+    """
+    ### YOUR CODE HERE
+    raise NotImplementedError
+
 
   @classmethod
-  def from_pretrained(cls, model='gpt2', d=768, l=12):
+  def from_pretrained(cls, model='gpt2', d=768, l=12, num_heads=12):
     gpt_model = OpenAIGPT2Model.from_pretrained(model).eval()
-    our_model = GPT2Model(GPT2Config()).eval()
+    our_model = GPT2Model(GPT2Config(hidden_size=d, num_hidden_layers=l,num_attention_heads=num_heads,
+                                     intermediate_size=d*3)).eval()
 
     # Load word and positional embeddings.
     our_model.word_embedding.load_state_dict(gpt_model.wte.state_dict())
