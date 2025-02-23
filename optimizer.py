@@ -61,7 +61,40 @@ class AdamW(Optimizer):
                 ###
                 ###       Refer to the default project handout for more details.
                 ### YOUR CODE HERE
-                raise NotImplementedError
+                
+                # print(state)
+                if len(state) == 0:
+                    state["step"] = 0
+                    state["exp_avg"] = torch.zeros_like(p.data)  
+                    state["exp_avg_sq"] = torch.zeros_like(p.data)  
+
+                state["step"] += 1
+                step_t = state["step"]
+
+                # hyper
+                alpha = group["lr"]
+                beta1, beta2 = group["betas"]
+                eps = group["eps"]
+                weight_decay = group["weight_decay"]
+                # print(alpha, beta1, beta2, eps, weight_decay)
+                
+                # Update biased first and second moment estimates
+                # mt
+                exp_avg = state["exp_avg"] = beta1 * state["exp_avg"] + (1 - beta1) * grad
+                # vt
+                exp_avg_sq = state["exp_avg_sq"] = beta2 * state["exp_avg_sq"] + (1 - beta2) * (grad ** 2)
+
+                # Compute bias-corrected learning rate (efficient version)
+                beta_t_1 = 1 - beta1 ** step_t
+                beta_t_2 = 1 - beta2 ** step_t
+                alpha_t = alpha * (beta_t_2 ** 0.5) / beta_t_1
+
+                # Update parameters using the efficient Adam update formula (theta_t)
+                p.data -= alpha_t * exp_avg / (exp_avg_sq.sqrt() + eps)
+
+                # Apply decoupled weight decay
+                if weight_decay > 0:
+                    p.data -= alpha * weight_decay * p.data
 
 
         return loss
