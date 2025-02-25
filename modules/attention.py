@@ -34,13 +34,23 @@ class CausalSelfAttention(nn.Module):
   def attention(self, key, query, value, attention_mask):
 
     d_k = self.attention_head_size
-    scores = torch.matmul(query, key.transpose(-2, -1)) / (d_k ** 0.5)
-    scores = scores + attention_mask
-    attn_weights = nn.functional.softmax(scores, dim=-1)
-    attn_probs = self.dropout(attn_weights)
-    attn_value = torch.matmul(attn_probs, value)
-    atten_output = rearrange(attn_value, 'b h t d -> b t (h d)')
-    return atten_output
+    scores = torch.matmul(query, key.transpose(-1, -2)) / (d_k ** 0.5)
+    
+    # Create a causal mask of shape [1, 1, seq_len, seq_len]
+    seq_len = scores.size(-1)
+    causal_mask = torch.tril(torch.ones((seq_len, seq_len), device=scores.device))
+    # Convert zeros to large negative values.
+    causal_mask = (1.0 - causal_mask) * -10000.0
+    
+    # Add the causal mask and the provided (padding) attention mask.
+    scores = scores + causal_mask + attention_mask
+    
+    attn_probs = torch.softmax(scores, dim=-1)
+    attn_probs = self.dropout(attn_probs)
+    
+    attn_output = torch.matmul(attn_probs, value)
+    attn_output = rearrange(attn_output, 'b h t d -> b t (h d)')
+    return attn_output
 
   def forward(self, hidden_states, attention_mask):
     """
